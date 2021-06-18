@@ -30,27 +30,27 @@ class EmblemedIcon {
 
     _repaint(actor) {
         const cr = actor.get_context();
-        const [w, h] = actor.get_surface_size();
+        const [real_w, real_h] = actor.get_surface_size();
 
         cr.save();
 
         const surf = St.TextureCache.get_default().load_file_to_cairo_surface(this.path);
+        const surf_width = surf.getWidth();
+        const surf_height = surf.getHeight();
 
-        const factor = w / surf.getWidth();
-
-        const true_width = surf.getWidth() * factor;
-        const true_height = surf.getHeight() * factor;
-
-        let y_offset = 0;
-        let x_offset = 0;
-
-        if (surf.getWidth() >= surf.getHeight()) {
-            x_offset = 0;
-            y_offset = ((h * (1 / factor)) - surf.getHeight()) / 2;
-        } else {
-            x_offset = ((w * (1 / factor)) - surf.getWidth()) / 2;
-            y_offset = 0;
+        let [w, h] = [real_w, real_h];
+        const ratio = surf_width / surf_height;
+        if ((w / h) > ratio) {
+            w = h * ratio;
         }
+
+        const factor = w / surf_width;
+
+        const true_width = surf_width * factor;
+        const true_height = surf_height * factor;
+
+        const x_offset = ((real_w * (1 / factor)) - surf.getWidth()) / 2;
+        const y_offset = ((real_h * (1 / factor)) - surf.getHeight()) / 2;
 
         const true_x_offset = (w - true_width) / 2;
         const true_y_offset = (h - true_height) / 2;
