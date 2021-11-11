@@ -274,14 +274,6 @@ class AppMenuButtonRightClickMenu extends Applet.AppletPopupMenu {
                 }
                 this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
             }
-            if (this.state.settings.launchNewInstance && (!actions || actions.length === 0) && !isWindowBacked) {
-                item = createMenuItem({label: _('New Window'), icon: 'window-new'});
-                this.signals.connect(item, 'activate', () => this.groupState.trigger('launchNewInstance'));
-                this.addMenuItem(item);
-                if (!actions || actions.length === 0) {
-                    this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-                }
-            }
         }, () => {
             if (isWindowBacked) {
                 this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
@@ -528,9 +520,7 @@ class WindowThumbnail {
         this.state = params.state;
         this.stateConnectId = this.state.connect({
             scrollActive: () => {
-                if (this.state.overlayPreview) {
-                    this.destroyOverlayPreview();
-                }
+                this.destroyOverlayPreview();
             },
             thumbnailCloseButtonOffset: ({thumbnailCloseButtonOffset}) => {
                 this.button.style = CLOSED_BUTTON_STYLE + `position: ${thumbnailCloseButtonOffset}px -2px;`;
@@ -637,9 +627,7 @@ class WindowThumbnail {
             && (!this.lastEnterActor
                 || (this.lastEnterActor.indexOf('StButton') === -1)
                     && this.lastEnterActor.indexOf('ClutterClone') === -1)) {
-            if (this.state.overlayPreview) {
-                this.destroyOverlayPreview();
-            }
+            this.destroyOverlayPreview();
             this.hoverPeek(this.state.settings.peekOpacity);
         }
         this.lastEnterActor = actorString;
@@ -688,7 +676,6 @@ class WindowThumbnail {
     handleCloseClick() {
         this.onLeave();
         this.stopClick = true;
-        this.hoverPeek(OPACITY_OPAQUE);
 
         this.metaWindow.delete(global.get_current_time());
         if (!this.groupState.metaWindows || this.groupState.metaWindows.length <= 1) {
@@ -836,7 +823,6 @@ class WindowThumbnail {
 
     hoverPeek(opacity) {
         if (!this.state.settings.enablePeek
-            || this.state.overlayPreview
             || this.state.scrollActive
             || (this.metaWindowActor && this.metaWindowActor.is_finalized())) {
             return;
@@ -845,37 +831,41 @@ class WindowThumbnail {
             this.metaWindowActor = this.metaWindow.get_compositor_private();
         }
         this.state.set({
-            overlayPreview: new Clutter.Clone({
+            lastOverlayPreview: new Clutter.Clone({
                 source: this.metaWindowActor.get_texture(),
                 opacity: 0
             })
         });
         let [x, y] = this.metaWindowActor.get_position();
-        this.state.overlayPreview.set_position(x, y);
-        global.overlay_group.add_child(this.state.overlayPreview);
-        global.overlay_group.set_child_above_sibling(this.state.overlayPreview, null);
-        setOpacity(this.state.settings.peekTimeIn, this.state.overlayPreview, opacity);
+        this.state.lastOverlayPreview.set_position(x, y);
+        global.overlay_group.add_child(this.state.lastOverlayPreview);
+        global.overlay_group.set_child_above_sibling(this.state.lastOverlayPreview, null);
+        setOpacity(this.state.settings.peekTimeIn, this.state.lastOverlayPreview, opacity);
     }
 
     destroyOverlayPreview() {
-        if (!this.state.overlayPreview) return;
+        if (!this.state.lastOverlayPreview) return;
 
         if (this.state.settings.peekTimeOut) {
+            let currOverlayPreview = this.state.lastOverlayPreview;
             setOpacity(
                 this.state.settings.peekTimeOut,
-                this.state.overlayPreview,
+                currOverlayPreview,
                 0,
-                () => this._destroyOverlayPreview()
+                () => this._destroyOverlayPreview(currOverlayPreview)
             );
         } else {
-            this._destroyOverlayPreview();
+            this._destroyOverlayPreview(this.state.lastOverlayPreview);
         }
     }
 
-    _destroyOverlayPreview() {
-        global.overlay_group.remove_child(this.state.overlayPreview);
-        this.state.overlayPreview.destroy();
-        this.state.set({overlayPreview: null});
+    _destroyOverlayPreview(overlayPreview) {
+        global.overlay_group.remove_child(overlayPreview);
+        overlayPreview.destroy();
+
+        if(overlayPreview === this.state.lastOverlayPreview) {
+            this.state.set({lastOverlayPreview: null});
+        }
     }
 
     destroy() {

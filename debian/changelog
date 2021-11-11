@@ -1,3 +1,54 @@
+cinnamon (5.0.5) uma; urgency=medium
+
+  [ Michael Webster ]
+  * util.js: Remove long parenthesized text in network device labels.
+  * org.cinnamon.gschema.xml: Add lxterminal and xfce4-terminal to focus passthru list.
+  * org.cinnamon.gschema.xml: Add firefox to focus passthru list.
+  * window list applet: Track urgent/demanding attention separately from other-workspace transience during initial window item creation.
+  * menu applet: Restore a max button width constraint, and the old width calculations for the application box.
+  * menu applet: Fix the fallback sort method for search results.
+  * org.cinnamon.gschema.xml: Add libreoffice to focus passthru list.
+
+ -- Clement Lefebvre <root@linuxmint.com>  Wed, 14 Jul 2021 15:23:16 +0100
+
+cinnamon (5.0.4) uma; urgency=medium
+
+  * GWL: Remove Super+space shortcut
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri, 02 Jul 2021 16:18:53 +0100
+
+cinnamon (5.0.3) uma; urgency=medium
+
+  [ Michael Webster ]
+  * meson: Make install dir of the python spice modules configurable.
+  * menu applet: Don't strip the search pattern before sending it to custom search providers.
+
+  [ Stephen Collins ]
+  * xapp status applet: update the tooltip text immediately (#10130)
+
+  [ itzexor ]
+  * lookingGlass.js: work around actor property access error
+  * lookingGlass.js: delay and aggregate window tracker updates
+  * lookingGlass.js: modernizations and cleanups
+
+  [ Peter ]
+  * Add basic proxy auth for spices manager
+  * Update Spices.py
+
+  [ Michael Webster ]
+  * main.js: Simplify activateWindow and let muffin handle workspace activation.
+
+  [ itzexor ]
+  * cinnamon-killer-daemon: user cinnamon-launcher instead
+  * cinnamon-launcher: fix fallback recovery code
+
+  [ Michael Webster ]
+  * cinnamon-launcher: Show restart confirmation even if memory limiting is disabled.
+  * Restore the window attention handler, but with a reversed role.
+  * window-list applet: Don't rely on muffin signals for marking new windows as urgent.
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri, 25 Jun 2021 16:57:58 +0100
+
 cinnamon (5.0.2) uma; urgency=medium
 
   [ Michael Webster ]

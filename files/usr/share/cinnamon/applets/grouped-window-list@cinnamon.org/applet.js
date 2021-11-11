@@ -204,7 +204,7 @@ class GroupedWindowListApplet extends Applet.Applet {
             willUnmount: false,
             settings: {},
             homeDir: GLib.get_home_dir(),
-            overlayPreview: null,
+            lastOverlayPreview: null,
             lastCycled: -1,
             lastTitleDisplay: null,
             scrollActive: false,
@@ -339,7 +339,6 @@ class GroupedWindowListApplet extends Applet.Applet {
             {key: 'scroll-behavior', value: 'scrollBehavior', cb: null},
             {key: 'show-recent', value: 'showRecent', cb: null},
             {key: 'autostart-menu-item', value: 'autoStart', cb: null},
-            {key: 'launch-new-instance-menu-item', value: 'launchNewInstance', cb: null},
             {key: 'monitor-move-all-windows', value: 'monitorMoveAllWindows', cb: null},
             {key: 'show-all-workspaces', value: 'showAllWorkspaces', cb: this.refreshAllAppLists}
         ];

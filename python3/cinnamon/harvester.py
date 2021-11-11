@@ -3,6 +3,7 @@
 import requests
 import os
 import time
+import math
 import subprocess
 import json
 import locale
@@ -19,7 +20,8 @@ from PIL import Image
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
-from gi.repository import Gdk, Gtk
+gi.require_version('Gio', '2.0')
+from gi.repository import Gdk, Gtk, Gio
 
 from . import logger
 from . import proxygsettings
@@ -38,24 +40,48 @@ except:
     pass
 
 URL_GITHUB_SPICES = "https://cinnamon-spices.linuxmint.com"
-
 URL_SPICES_HOME = "https://cinnamon-spices.linuxmint.com"
-URL_MAP = {
-    'applet': URL_SPICES_HOME + "/json/applets.json",
-    'theme': URL_SPICES_HOME + "/json/themes.json",
-    'desklet': URL_SPICES_HOME + "/json/desklets.json",
-    'extension': URL_SPICES_HOME + "/json/extensions.json"
+
+SPICE_MAP = {
+    "applet": {
+        "url": URL_SPICES_HOME + "/json/applets.json",
+        "enabled-schema": "org.cinnamon",
+        "enabled-key": "enabled-applets"
+    },
+    "desklet": {
+        "url": URL_SPICES_HOME + "/json/desklets.json",
+        "enabled-schema": "org.cinnamon",
+        "enabled-key": "enabled-desklets"
+    },
+    "extension": {
+        "url": URL_SPICES_HOME + "/json/extensions.json",
+        "enabled-schema": "org.cinnamon",
+        "enabled-key": "enabled-extensions"
+    },
+    "theme": {
+        "url": URL_SPICES_HOME + "/json/themes.json",
+        "enabled-schema": "org.cinnamon.theme",
+        "enabled-key": "name"
+    }
 }
 
-TIMEOUT_DOWNLOAD_JSON = 120
-TIMEOUT_DOWNLOAD_THUMB = 120
-TIMEOUT_DOWNLOAD_ZIP = 300
+TIMEOUT_DOWNLOAD_JSON = 60
+TIMEOUT_DOWNLOAD_THUMB = 60
+TIMEOUT_DOWNLOAD_ZIP = 120
 
 home = os.path.expanduser("~")
 locale_inst = '%s/.local/share/locale' % home
 settings_dir = '%s/.cinnamon/configs/' % home
 
 activity_logger = logger.ActivityLogger()
+
+# return how many times 10m goes into the utc timestamp.
+# This gives us a unique value every 10 minutes to allow
+# the server cache to be utilized.
+TIMESTAMP_LIFETIME_MINUTES = 10
+def get_current_timestamp():
+    seconds = datetime.datetime.utcnow().timestamp()
+    return int(seconds // (TIMESTAMP_LIFETIME_MINUTES * 60))
 
 class SpiceUpdate():
     def __init__(self, spice_type, uuid, index_node, meta_node):
@@ -151,6 +177,7 @@ class Harvester():
             print(e)
 
     def refresh(self):
+        debug("Cache stamp: %d" % get_current_timestamp())
         self._update_local_json()
         self._update_local_thumbs()
 
@@ -163,15 +190,40 @@ class Harvester():
     def install(self, uuid):
         self._install_by_uuid(uuid)
 
+    def get_enabled(self, uuid):
+        settings = Gio.Settings(schema_id=SPICE_MAP[self.spice_type]["enabled-schema"])
+
+        enabled_count = 0
+        enabled_list = []
+
+        if self.themes:
+            enabled_list = [settings.get_string(SPICE_MAP[self.spice_type]["enabled-key"])]
+        else:
+            enabled_list = settings.get_strv(SPICE_MAP[self.spice_type]["enabled-key"])
+
+        for item in enabled_list:
+            item = item.replace("!", "")
+            if uuid in item.split(":"):
+                enabled_count += 1
+
+        return enabled_count
+
     def _update_local_json(self):
         debug("harvester: Downloading new list of available %ss" % self.spice_type)
-        url = URL_MAP[self.spice_type]
+        url = SPICE_MAP[self.spice_type]["url"]
 
-        r = requests.get(url, timeout=TIMEOUT_DOWNLOAD_JSON, proxies=self.proxy_info, params={ "time" : round(time.time()) })
-        debug("Downloading from %s" % r.request.url)
+        try:
+            r = requests.get(url,
+                             timeout=TIMEOUT_DOWNLOAD_JSON,
+                             proxies=self.proxy_info,
+                             params={ "time" : get_current_timestamp() })
+            debug("Downloading from %s" % r.request.url)
+        except Exception as e:
+            print("Could not refresh json data for %s: %s" % (self.spice_type, e))
+            return
 
         if r.status_code != requests.codes.ok:
-            debug("Can't download spices json")
+            debug("Can't download spices json: ", r.status_code)
             return
 
         with open(self.index_file, "w") as f:
@@ -196,7 +248,14 @@ class Harvester():
         if (not os.path.isfile(paths.thumb_local_path)) or self._is_bad_image(paths.thumb_local_path) or self._spice_has_update(uuid):
             debug("Downloading thumbnail for %s: %s" % (uuid, paths.thumb_download_url))
 
-            r = requests.get(paths.thumb_download_url, timeout=TIMEOUT_DOWNLOAD_THUMB, proxies=self.proxy_info, params={ "time" : round(time.time()) })
+            try:
+                r = requests.get(paths.thumb_download_url,
+                                 timeout=TIMEOUT_DOWNLOAD_THUMB,
+                                 proxies=self.proxy_info,
+                                 params={ "time" : get_current_timestamp() })
+            except Exception as e:
+                print("Could not get thumbnail for %s: %s" % (uuid, e))
+                return
 
             if r.status_code != requests.codes.ok:
                 debug("Can't download thumbnail for %s: %s" % (uuid, r.status_code))
@@ -278,7 +337,15 @@ class Harvester():
             return
 
         paths = SpicePathSet(item, spice_type=self.spice_type)
-        r = requests.get(paths.zip_download_url, timeout=TIMEOUT_DOWNLOAD_ZIP, proxies=self.proxy_info, params={ "time" : round(time.time()) })
+
+        try:
+            r = requests.get(paths.zip_download_url,
+                             timeout=TIMEOUT_DOWNLOAD_ZIP,
+                             proxies=self.proxy_info,
+                             params={ "time" : get_current_timestamp() })
+        except Exception as e:
+            print("Could not download zip for %s: %s" % (uuid, e))
+            return
 
         if r.status_code != requests.codes.ok:
             debug("couldn't download")

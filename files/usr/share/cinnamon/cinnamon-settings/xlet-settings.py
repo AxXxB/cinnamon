@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 import getopt
+
+from bin import util
+util.strip_syspath_locals()
+
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('XApp', '1.0')
@@ -41,8 +45,6 @@ XLET_SETTINGS_WIDGETS = {
     "fontchooser"       :   "JSONSettingsFontButton",
     "soundfilechooser"  :   "JSONSettingsSoundFileChooser",
     "iconfilechooser"   :   "JSONSettingsIconChooser",
-    "tween"             :   "JSONSettingsTweenChooser",
-    "effect"            :   "JSONSettingsEffectChooser",
     "datechooser"       :   "JSONSettingsDateChooser",
     "timechooser"       :   "JSONSettingsTimeChooser",
     "keybinding"        :   "JSONSettingsKeybinding",
